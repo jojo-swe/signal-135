@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIGNAL 135</title>
+<style>
+  :root { --bg: #000; --fg: #e8f6ff; --accent: #4cf3ff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; background: #000; cursor: pointer; z-index: 5; text-align: center; padding: 16px; box-sizing: border-box; }
+  #start h1 { margin: 0; font-size: clamp(36px, 9vw, 96px); letter-spacing: .12em; font-weight: 800; }
+  #start p { margin: 0; opacity: .7; font-size: clamp(12px, 2.6vw, 16px); }
+  #start .go { margin-top: 10px; border: 1px solid var(--accent); color: var(--accent); padding: 12px 26px; letter-spacing: .3em; }
+  #hud { position: fixed; right: 12px; bottom: 10px; font-size: 11px; opacity: .35; z-index: 4; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
+<div id="start"><h1>SIGNAL 135</h1><p>realtime · one file · zero libraries · sound on</p><div class="go" id="go">PLAY</div></div>
+<div id="hud"></div>
+<script src="synth.js"></script>
+<script>
+"use strict";
+const RENDER = new URLSearchParams(location.search).has('render');
+const gl = document.getElementById('gl').getContext('webgl2', { preserveDrawingBuffer: RENDER, antialias: false });
+const glc = gl.canvas, ov = document.getElementById('ov'), ox = ov.getContext('2d');
+
+const VS = `#version 300 es
+in vec2 p; void main(){ gl_Position = vec4(p,0,1); }`;
+
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 R; uniform float T; uniform float K;
+out vec4 o;
+const float SPB = 60./128.;
+mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+vec3 pal(float t, vec3 d){ return .5+.5*cos(6.2832*(t+d)); }
+float sdBox(vec3 p, vec3 b){ vec3 q=abs(p)-b; return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.); }
+
+int S; float sT; // scene index, local time
+
+float tunnel(vec3 p){
+  vec3 q = p; q.xy *= rot(floor(q.z/2.)*.35 + T*.2);
+  q.z = mod(q.z, 2.) - 1.;
+  float ring = length(vec2(length(q.xy)-2.4, q.z)) - .06;
+  vec3 b = q; b.xy = abs(b.xy);
+  float beam = sdBox(b - vec3(1.7,1.7,0.), vec3(.05,.05,.9));
+  float wall = 3.2 - length(p.xy);
+  return min(min(ring, beam), wall);
+}
+float kifs(vec3 p){
+  float s = 1.;
+  p.xz *= rot(T*.15); p.xy *= rot(T*.11);
+  for(int i=0;i<7;i++){
+    p = abs(p) - vec3(1.05,.55,.8)*(.92+.08*sin(T*.4+float(i)));
+    p.xy *= rot(.55 + .1*sin(T*.2)); p.yz *= rot(.37);
+    p *= 1.42; s *= 1.42;
+  }
+  return (sdBox(p, vec3(.9)))/s;
+}
+float gyro(vec3 p){
+  vec3 q = p*1.3;
+  float g = abs(dot(sin(q), cos(q.yzx)))/1.3 - .04 - .03*K;
+  return max(g, -(1.1 - length(p.xy - vec2(sin(p.z*.2)*1.5, cos(p.z*.15)*1.2))));
+}
+float menger(vec3 p){
+  p.xz *= rot(T*.12); p.xy *= rot(.3);
+  float d = sdBox(p, vec3(1.));
+  float s = 1.;
+  for(int m=0;m<4;m++){
+    vec3 a = mod(p*s, 2.) - 1.;
+    s *= 3.;
+    vec3 r = abs(1. - 3.*abs(a));
+    float da=max(r.x,r.y), db=max(r.y,r.z), dc=max(r.z,r.x);
+    d = max(d, (min(da,min(db,dc)) - 1.)/s);
+  }
+  return d;
+}
+float map(vec3 p){
+  if(S==0) return tunnel(p);
+  if(S==1) return kifs(p);
+  if(S==2) return gyro(p);
+  return menger(p);
+}
+vec3 nrm(vec3 p){
+  vec2 e = vec2(.0015,-.0015);
+  return normalize(e.xyy*map(p+e.xyy)+e.yyx*map(p+e.yyx)+e.yxy*map(p+e.yxy)+e.xxx*map(p+e.xxx));
+}
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5*R)/R.y;
+  S = int(clamp(floor(T/15.), 0., 3.)); sT = T - float(S)*15.;
+  vec3 ro, ta; vec3 tint; float fov = 1.6;
+  if(S==0){ float z = T*3.5; ro = vec3(sin(T*.4)*.6, cos(T*.3)*.5, z); ta = ro + vec3(sin(T*.5)*.4, cos(T*.37)*.3, 1.); tint = vec3(.2,.9,1.); }
+  else if(S==1){ float a = sT*.25; float r = 4.6 - .8*sin(sT*.2); ro = vec3(cos(a)*r, sin(sT*.17)*1.2, sin(a)*r); ta = vec3(0); tint = vec3(1.,.45,.15); fov = 1.9; }
+  else if(S==2){ float z = sT*5.; ro = vec3(sin(z*.2)*1.5, cos(z*.15)*1.2, z); ta = vec3(sin((z+2.)*.2)*1.5, cos((z+2.)*.15)*1.2, z+2.); tint = vec3(1.,.15,.7); }
+  else { float a = sT*.2 + 1.; float r = 2.6 + .9*cos(sT*.15); ro = vec3(cos(a)*r, .8+.5*sin(sT*.3), sin(a)*r); ta = vec3(0); tint = vec3(.6,.8,1.); fov = 1.8; }
+  vec3 ww = normalize(ta-ro), uu = normalize(cross(ww, vec3(0,1,0))), vv = cross(uu, ww);
+  vec3 rd = normalize(uv.x*uu + uv.y*vv + fov*ww);
+  rd.xy *= rot(S==2 ? sin(sT*.3)*.4 : 0.);
+
+  float t = 0., d; vec3 glow = vec3(0);
+  int i;
+  for(i=0;i<96;i++){
+    vec3 p = ro + rd*t;
+    d = map(p);
+    float gc = .0045/(.012 + d*d);
+    glow += gc * pal(p.z*.05 + T*.05 + float(S)*.2, vec3(0.,.33,.67));
+    if(d < .0012*t || t > 40.) break;
+    t += d*.85;
+  }
+  vec3 col = vec3(0);
+  if(t < 40.){
+    vec3 p = ro + rd*t, n = nrm(p);
+    vec3 l = normalize(vec3(.6,.8,-.4));
+    float dif = max(dot(n,l),0.), rim = pow(1.-max(dot(n,-rd),0.), 3.);
+    float ao = 1. - float(i)/96.;
+    vec3 base = mix(tint, pal(length(p)*.15 + T*.03, vec3(.1,.4,.7)), .45);
+    col = base*(.08 + .9*dif)*ao + rim*tint*1.4*ao;
+    col += tint * 3. * K * smoothstep(.03,.0,abs(fract(length(p)*2. - T*2.)-.5)*.1);
+    col *= exp(-t*.06);
+  }
+  col += glow*.018*(1. + 1.4*K);
+  col = mix(col, tint*.03, 1. - exp(-t*.025));
+  // transitions: flash on scene cut, fade at start/end
+  float cut = exp(-sT*5.) * (S>0 ? 1. : 0.);
+  col += vec3(1.)*cut*.8;
+  col *= smoothstep(0., 2.5, T) * smoothstep(60., 57.5, T) * mix(1., .3, smoothstep(52.5, 54., T));
+  // post
+  col = 1. - exp(-col*1.35);
+  col = pow(col, vec3(.85));
+  vec2 q = gl_FragCoord.xy/R;
+  col *= .35 + .65*pow(16.*q.x*q.y*(1.-q.x)*(1.-q.y), .25);
+  col *= .96 + .04*sin(gl_FragCoord.y*3.1416);
+  float gr = fract(sin(dot(gl_FragCoord.xy + T*60., vec2(12.9898,78.233)))*43758.5453);
+  col += (gr - .5)*.035;
+  o = vec4(col, 1.);
+}`;
+
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const uR = gl.getUniformLocation(prog, 'R'), uT = gl.getUniformLocation(prog, 'T'), uK = gl.getUniformLocation(prog, 'K');
+
+// ---------- text overlay ----------
+const CUES = [
+  // [start, end, lines, size(rel), style]
+  [2.0, 6.8, ['SIGNAL 135'], 0.13, 'title'],
+  [3.2, 6.8, ['a realtime demo'], 0.035, 'sub'],
+  [8.0, 13.5, ['one HTML file', 'zero libraries', 'every pixel and every sample', 'computed live from math'], 0.042, 'list'],
+  [16.0, 21.5, ['geometry: distance fields'], 0.045, 'tag'],
+  [22.5, 28.5, ['music: a pure function of time', 'f(t) → sound'], 0.045, 'tag'],
+  [30.05, 37.0, ['135'], 0.34, 'big'],
+  [31.2, 37.0, ['≈ 99th percentile'], 0.04, 'under'],
+  [38.5, 44.0, ['not a ceiling.', 'a starting signal.'], 0.055, 'tag'],
+  [47.0, 53.0, ['code · music · visuals', 'one person'], 0.045, 'tag'],
+  [53.5, 59.5, ['SIGNAL 135', 'John Johansson', 'github.com/jojo-swe/signal-135'], 0.05, 'end'],
+];
+function typed(str, t0, t, cps) { const n = Math.max(0, Math.floor((t - t0) * cps)); return str.slice(0, n); }
+function drawText(ctx, w, h, t) {
+  ctx.clearRect(0, 0, w, h);
+  const k = Synth.kickEnv(t);
+  for (const [a, b, lines, sz, style] of CUES) {
+    if (t < a || t > b) continue;
+    const fade = Math.min(1, (t - a) / 0.25) * Math.min(1, (b - t) / 0.5);
+    const S = sz * h;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${style === 'title' || style === 'big' || style === 'end' ? 800 : 500} ${S}px ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace`;
+    ctx.shadowColor = 'rgba(76,243,255,.85)'; ctx.shadowBlur = S * 0.35;
+    ctx.fillStyle = '#eafcff';
+    let y0 = h * 0.5 - (lines.length - 1) * S * 0.75;
+    if (style === 'sub') y0 = h * 0.5 + h * 0.1;
+    if (style === 'under') y0 = h * 0.5 + h * 0.22;
+    if (style === 'big') {
+      const sc = 1 + k * 0.06;
+      ctx.translate(w / 2, h * 0.47); ctx.scale(sc, sc);
+      // RGB split on the big number
+      ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = S * 0.15;
+      const off = 2 + k * 10;
+      ctx.fillStyle = 'rgba(255,40,120,.8)'; ctx.fillText(lines[0], -off, 0);
+      ctx.fillStyle = 'rgba(40,220,255,.8)'; ctx.fillText(lines[0], off, 0);
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillText(lines[0], 0, 0);
+      ctx.restore(); continue;
+    }
+    lines.forEach((ln, i) => {
+      const t0 = a + i * 0.45;
+      const s = style === 'title' || style === 'end' && i === 0 ? ln : typed(ln, t0, t, 38);
+      const cursor = (style !== 'title' && s.length < ln.length && s.length > 0) ? '▌' : '';
+      if (style === 'end' && i > 0) { ctx.font = `500 ${S * 0.55}px ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace`; }
+      ctx.fillText(s + cursor, w / 2, y0 + i * S * 1.5);
+    });
+    ctx.restore();
+  }
+}
+
+function draw(t, w, h) {
+  if (glc.width !== w || glc.height !== h) { glc.width = w; glc.height = h; }
+  gl.viewport(0, 0, w, h);
+  gl.uniform2f(uR, w, h); gl.uniform1f(uT, t); gl.uniform1f(uK, Synth.kickEnv(t));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (ov.width !== w || ov.height !== h) { ov.width = w; ov.height = h; }
+  drawText(ox, w, h, t);
+}
+
+if (RENDER) {
+  // offline renderer hook: draws frame at time t, returns composited JPEG
+  document.getElementById('start').remove();
+  const comp = document.createElement('canvas'), cx = comp.getContext('2d');
+  window.renderFrame = (t, w, h) => {
+    draw(t, w, h); gl.finish();
+    comp.width = w; comp.height = h;
+    cx.drawImage(glc, 0, 0); cx.drawImage(ov, 0, 0);
+    return comp.toDataURL('image/jpeg', 0.93);
+  };
+  window.ready = true;
+} else {
+  const hud = document.getElementById('hud');
+  let actx, t0, scale = Math.min(window.devicePixelRatio || 1, 1.5), lastFrames = [];
+  document.getElementById('start').addEventListener('click', async () => {
+    const st = document.getElementById('start');
+    st.querySelector('.go').textContent = 'COMPUTING 60 s OF AUDIO…';
+    await new Promise(r => setTimeout(r, 30));
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const N = Math.floor(Synth.DUR * actx.sampleRate), buf = actx.createBuffer(2, N, actx.sampleRate);
+    const L = buf.getChannelData(0), Rr = buf.getChannelData(1), inv = 1 / actx.sampleRate;
+    for (let i = 0; i < N; i++) { const s = Synth.sample(i * inv); L[i] = s[0]; Rr[i] = s[1]; }
+    const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+    st.remove();
+    t0 = actx.currentTime + 0.05; src.start(t0);
+    src.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
+    requestAnimationFrame(loop);
+  });
+  function loop(now) {
+    const t = Math.min(Synth.DUR, Math.max(0, actx.currentTime - t0));
+    // adaptive resolution: keep it smooth on weak GPUs
+    lastFrames.push(now); if (lastFrames.length > 30) lastFrames.shift();
+    if (lastFrames.length === 30) {
+      const fps = 29000 / (lastFrames[29] - lastFrames[0]);
+      if (fps < 40 && scale > 0.4) { scale *= 0.85; lastFrames = []; }
+      else if (fps > 58 && scale < Math.min(window.devicePixelRatio || 1, 1.5)) { scale *= 1.05; lastFrames = []; }
+    }
+    draw(t, Math.floor(innerWidth * scale), Math.floor(innerHeight * scale));
+    hud.textContent = t.toFixed(1) + ' s';
+    if (t < Synth.DUR) requestAnimationFrame(loop);
+  }
+}
+</script>
+</body>
+</html>
