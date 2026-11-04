@@ -62,7 +62,7 @@ Flera agenter kan jobba här parallellt – utgå alltid från att någon annan 
 #### Bygga och testa
 
 - Installera: `npm install`
-- test: `npm run test`  (`echo "Error: no test specified" && exit 1`)
+- Test: inga tester finns ännu (`npm test` är npm:s standardplatshållare som alltid felar).
 - CI: GitHub Actions (`privacy-guard.yml`)
 
 #### Struktur
