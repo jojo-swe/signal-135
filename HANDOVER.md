@@ -25,7 +25,7 @@ Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, on
 
 Önskemål från användaren (2026-11-14):
 
-- **Publicera demot på johnjohansson.com.** Hur sajten hostas är inte undersökt ännu. Demot är statiska filer (`index.html` + `synth.js`), inget byggsteg.
+- **Gå live på johnjohansson.com:** demot ligger på sajt-repots `main` (`/signal-135/`, jojo-swe/johnjohansson-com#2 och #3). Kvar: nattens Build där, sedan `release.yml`-dispatch (Johns godkännande), så installerar VPS:en. Ändras demot här måste `index.html` och `synth.js` kopieras till `public/signal-135/` igen.
 
 Övriga förslag:
 
@@ -53,6 +53,8 @@ Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, on
 |-------|-------|-----------------|
 | 2026-11-04 | Claude (Cowork) | Lade till AGENTS.md, HANDOVER.md och CLAUDE.md; inventerade PR:er, brancher och commits. |
 | 2026-11-14 | Claude Code | Statusgenomgång; raderade inaktuell remote-branch `cursor/privacy-guard-dbfd` (med användarens OK); uppdaterade HANDOVER.md (PR #3). |
+| 2026-11-14 | Claude Code | PLAY/REPLAY som knappar och prefers-reduced-motion (stillbild per sektion), #7. Kopierat till sajten. |
+| 2026-11-14 | Claude Code | Öppnade jojo-swe/johnjohansson-com#2 som publicerar demot på `/signal-135/`. |
 | 2026-11-14 | Claude Code | Rättade render.js WAV-cache (Devin Review). Mergade #4 och #5 på användarens begäran. |
 | 2026-11-14 | Claude Code | Musiken omgjord till dark industrial techno på användarens önskan (harmonisk moll, distad kick, rullande bas, acid, metallslag, risers). Snabbare additiv synt (sinusrekursion) och strömmande uppspelning i stället för förberäkning. |
 | 2026-11-14 | Claude Code | Förlängde demot till 3 minuter (PR på `agent/claude/three-minutes`); lade till `synth.test.js` som `npm test`; procentvisning vid ljudberäkning. |
