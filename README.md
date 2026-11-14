@@ -19,7 +19,7 @@ npx serve .
 | Part | What it does |
 |---|---|
 | `index.html` | WebGL2 fullscreen triangle, one fragment shader with four scenes (tunnel, KIFS fractal, gyroid, Menger sponge), 2D canvas text overlay, adaptive resolution |
-| `synth.js` | 128 BPM, Am–F–C–G with an F–G–Em–Am B-section. Kick, hats, clap, additive bass, detuned pad, 16th arp with stateless echo (the delay is just `arp(t - d)`), vibrato lead |
+| `synth.js` | Dark industrial techno at 128 BPM, A harmonic minor (Am–Am–F–E, B-section F–Dm–Bb–E). Distorted kick, rolling 16th bass, open hats, industrial snare with stateless echo, FM metal hits, 303-style acid line, saw drone and lead. Filters are stateless too: additive saws whose partials are weighted by a lowpass curve with a resonant bump |
 | `render.js` | Headless Chromium renders each frame at an exact timestamp, Node writes the WAV from the same synth, ffmpeg muxes to MP4 |
 
 Render the video yourself:
@@ -33,14 +33,14 @@ node render.js 1920 1080 60
 
 | Time | Scene | Music |
 |---|---|---|
-| 0–30 s | Neon tunnel | Pad, hats, kick enters at 7.5 s, bass at 22.5 s |
-| 30–60 s | Folding fractal | Arp enters |
-| 60–90 s | Gyroid | Drop (clap, lead), breakdown at 75 s |
+| 0–30 s | Neon tunnel | Drone, hats, kick enters at 7.5 s, rolling bass at 22.5 s |
+| 30–60 s | Folding fractal | Acid line and metal hits enter |
+| 60–90 s | Gyroid | Riser, drop (snare, lead), breakdown at 75 s |
 | 90–120 s | Menger sponge | B-section chords, build, drop at 105 s |
 | 120–165 s | Reprise: tunnel, fractal, gyroid in new colours | Full energy |
 | 165–180 s | Menger sponge | Outro, credits |
 
-Check the synth with `npm test`.
+Check the synth with `npm test`. In the browser the audio is streamed: 2 s chunks are synthesized a few seconds ahead of the playhead, so playback starts at once.
 
 ## License
 

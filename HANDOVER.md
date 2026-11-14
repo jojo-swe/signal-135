@@ -20,7 +20,7 @@ Projekt: A 3-minute realtime demo (60 s på `main` tills PR för 3-minutersversi
 | Agent/vem | Branch | Status | Beskrivning |
 |-----------|--------|--------|-------------|
 | Claude Code | `agent/claude/sharpen-gyroid` | PR #4 öppen | Fixar urblekt/dimmig gyroid-scen |
-| Claude Code | `agent/claude/three-minutes` | PR öppen (bas: #4) | Förlänger demot till 3 min: ny arrangering, B-del F–G–Em–Am, 12 sektioner à 15 s, repris i nya färger, `npm test` |
+| Claude Code | `agent/claude/three-minutes` | PR öppen (bas: #4) | Förlänger demot till 3 min (12 sektioner à 15 s, repris i nya färger) och gör om musiken till mörk industrial techno; strömmande ljud; `npm test` |
 
 ## Nästa steg
 
@@ -35,7 +35,8 @@ Projekt: A 3-minute realtime demo (60 s på `main` tills PR för 3-minutersversi
 
 ## Kända problem
 
-- Ljudet beräknas i förväg vid PLAY: ~5,5 s för 3 min på desktop (procentvisning finns), längre på mobil.
+- Ljudet strömmas i 2 s-bitar strax före uppspelningen (synten är ~19x realtid i Node). En mycket långsam enhet (<1x) skulle få hack; ej testat på mobil.
+- Lyssna-fil: `node`-export till `out/signal-135-industrial.wav` (gitignorerad, skapas lokalt).
 - Realtidsuppspelningen av 3-minutersversionen är bara kontrollerad bildruta för bildruta (`?render`), inte tittad på i sin helhet med ljud.
 - Ljudet ej avlyssnat/verifierat av agent (kan inte höra).
 - `render.js` (offline-MP4) ej körd sedan 2026-10-28.
@@ -54,5 +55,6 @@ Projekt: A 3-minute realtime demo (60 s på `main` tills PR för 3-minutersversi
 |-------|-------|-----------------|
 | 2026-11-04 | Claude (Cowork) | Lade till AGENTS.md, HANDOVER.md och CLAUDE.md; inventerade PR:er, brancher och commits. |
 | 2026-11-14 | Claude Code | Statusgenomgång; raderade inaktuell remote-branch `cursor/privacy-guard-dbfd` (med användarens OK); uppdaterade HANDOVER.md (PR #3). |
+| 2026-11-14 | Claude Code | Musiken omgjord till dark industrial techno på användarens önskan (harmonisk moll, distad kick, rullande bas, acid, metallslag, risers). Snabbare additiv synt (sinusrekursion) och strömmande uppspelning i stället för förberäkning. |
 | 2026-11-14 | Claude Code | Förlängde demot till 3 minuter (PR på `agent/claude/three-minutes`); lade till `synth.test.js` som `npm test`; procentvisning vid ljudberäkning. |
 | 2026-11-14 | Claude Code | Körde demot i webbläsaren. Fixade gyroid-scenen: tunnelurgröpningen hade fel tecken (gyroiden fanns bara i kamerans rör) + dämpad distans mot randiga artefakter. |

@@ -239,20 +239,27 @@ if (RENDER) {
   let actx, t0, scale = Math.min(window.devicePixelRatio || 1, 1.5), lastFrames = [];
   document.getElementById('start').addEventListener('click', async () => {
     const st = document.getElementById('start');
-    const go = st.querySelector('.go');
+    st.querySelector('.go').textContent = 'STARTING…';
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    const N = Math.floor(Synth.DUR * actx.sampleRate), buf = actx.createBuffer(2, N, actx.sampleRate);
-    const L = buf.getChannelData(0), Rr = buf.getChannelData(1), inv = 1 / actx.sampleRate;
-    // 3 min of audio takes seconds on slow devices: fill in chunks and show progress
-    for (let i = 0; i < N;) {
-      go.textContent = `COMPUTING AUDIO ${Math.floor(100 * i / N)}%`;
-      await new Promise(r => setTimeout(r, 0));
-      for (const end = Math.min(N, i + actx.sampleRate * 5); i < end; i++) { const s = Synth.sample(i * inv); L[i] = s[0]; Rr[i] = s[1]; }
-    }
-    const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+    await new Promise(r => setTimeout(r, 30));
+    // stream the audio: synthesize 2 s chunks a few seconds ahead of the playhead and schedule them
+    // back to back (sample-exact), so 3 minutes start instantly instead of after a long precompute
+    const sr = actx.sampleRate, inv = 1 / sr, CHUNK = sr * 2, N = Math.floor(Synth.DUR * sr);
+    const make = (i0) => {
+      const n = Math.min(CHUNK, N - i0), b = actx.createBuffer(2, n, sr), L = b.getChannelData(0), Rr = b.getChannelData(1);
+      for (let i = 0; i < n; i++) { const s = Synth.sample((i0 + i) * inv); L[i] = s[0]; Rr[i] = s[1]; }
+      return b;
+    };
+    const play = (b, i0) => { const s = actx.createBufferSource(); s.buffer = b; s.connect(actx.destination); s.start(t0 + i0 * inv); return s; };
+    let next = CHUNK, last;
+    const first = make(0);
+    t0 = actx.currentTime + 0.1; last = play(first, 0);
+    (function pump() {
+      while (next < N && t0 + next * inv < actx.currentTime + 4) { last = play(make(next), next); next += CHUNK; }
+      if (next < N) setTimeout(pump, 250);
+      else last.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
+    })();
     st.remove();
-    t0 = actx.currentTime + 0.05; src.start(t0);
-    src.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
     requestAnimationFrame(loop);
   });
   function loop(now) {
