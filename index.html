@@ -64,8 +64,10 @@ float kifs(vec3 p){
 }
 float gyro(vec3 p){
   vec3 q = p*1.3;
-  float g = abs(dot(sin(q), cos(q.yzx)))/1.3 - .04 - .03*K;
-  return max(g, -(1.1 - length(p.xy - vec2(sin(p.z*.2)*1.5, cos(p.z*.15)*1.2))));
+  // .6: abs(gyroid) overestimates distance, so damp it or rays skip the thin sheets (striped holes)
+  float g = .6*abs(dot(sin(q), cos(q.yzx)))/1.3 - .04 - .03*K;
+  // carve the camera's flight channel out of the lattice (subtraction: max(a, -tube))
+  return max(g, 1.1 - length(p.xy - vec2(sin(p.z*.2)*1.5, cos(p.z*.15)*1.2)));
 }
 float menger(vec3 p){
   p.xz *= rot(T*.12); p.xy *= rot(.3);
