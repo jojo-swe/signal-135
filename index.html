@@ -13,14 +13,21 @@
     gap: 18px; background: #000; cursor: pointer; z-index: 5; text-align: center; padding: 16px; box-sizing: border-box; }
   #start h1 { margin: 0; font-size: clamp(36px, 9vw, 96px); letter-spacing: .12em; font-weight: 800; }
   #start p { margin: 0; opacity: .7; font-size: clamp(12px, 2.6vw, 16px); }
-  #start .go { margin-top: 10px; border: 1px solid var(--accent); color: var(--accent); padding: 12px 26px; letter-spacing: .3em; }
+  .go { margin-top: 10px; border: 1px solid var(--accent); color: var(--accent); padding: 12px 26px; letter-spacing: .3em;
+    background: none; font: inherit; cursor: pointer; }
+  .go:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+  #replay { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 6; background: #000; }
+  #rm { font-size: 12px; }
   #hud { position: fixed; right: 12px; bottom: 10px; font-size: 11px; opacity: .35; z-index: 4; }
 </style>
 </head>
 <body>
 <canvas id="gl"></canvas>
 <canvas id="ov"></canvas>
-<div id="start"><h1>SIGNAL 135</h1><p>realtime · one file · zero libraries · sound on</p><div class="go" id="go">PLAY</div></div>
+<div id="start"><h1>SIGNAL 135</h1><p>realtime · one file · zero libraries · sound on</p>
+  <p id="rm" hidden>reduced motion is on: the music plays over still frames</p>
+  <button class="go" id="go" type="button" autofocus>PLAY</button></div>
+<button class="go" id="replay" type="button" hidden>REPLAY</button>
 <div id="hud"></div>
 <script src="synth.js"></script>
 <script>
@@ -175,10 +182,14 @@ const CUES = [
   [135.0, 138.5, ['135'], 0.34, 'big'],
   [173.5, 179.5, ['SIGNAL 135', 'John Johansson', 'github.com/jojo-swe/signal-135'], 0.05, 'end'],
 ];
+// prefers-reduced-motion: visuals freeze to one still per 15 s section, no typing, pulsing or flashes; music unchanged
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+let calm = RM.matches;
+RM.addEventListener('change', (e) => { calm = e.matches; });
 function typed(str, t0, t, cps) { const n = Math.max(0, Math.floor((t - t0) * cps)); return str.slice(0, n); }
 function drawText(ctx, w, h, t) {
   ctx.clearRect(0, 0, w, h);
-  const k = Synth.kickEnv(t);
+  const k = calm ? 0 : Synth.kickEnv(t);
   for (const [a, b, lines, sz, style] of CUES) {
     if (t < a || t > b) continue;
     const fade = Math.min(1, (t - a) / 0.25) * Math.min(1, (b - t) / 0.5);
@@ -205,7 +216,7 @@ function drawText(ctx, w, h, t) {
     }
     lines.forEach((ln, i) => {
       const t0 = a + i * 0.45;
-      const s = style === 'title' || style === 'end' && i === 0 ? ln : typed(ln, t0, t, 38);
+      const s = calm || style === 'title' || style === 'end' && i === 0 ? ln : typed(ln, t0, t, 38);
       const cursor = (style !== 'title' && s.length < ln.length && s.length > 0) ? '▌' : '';
       if (style === 'end' && i > 0) { ctx.font = `500 ${S * 0.55}px ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace`; }
       ctx.fillText(s + cursor, w / 2, y0 + i * S * 1.5);
@@ -214,10 +225,10 @@ function drawText(ctx, w, h, t) {
   }
 }
 
-function draw(t, w, h) {
+function draw(t, w, h, tv = t) { // tv: time for the 3D visuals (frozen under reduced motion)
   if (glc.width !== w || glc.height !== h) { glc.width = w; glc.height = h; }
   gl.viewport(0, 0, w, h);
-  gl.uniform2f(uR, w, h); gl.uniform1f(uT, t); gl.uniform1f(uK, Synth.kickEnv(t));
+  gl.uniform2f(uR, w, h); gl.uniform1f(uT, tv); gl.uniform1f(uK, Synth.kickEnv(tv));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (ov.width !== w || ov.height !== h) { ov.width = w; ov.height = h; }
   drawText(ox, w, h, t);
@@ -237,6 +248,8 @@ if (RENDER) {
 } else {
   const hud = document.getElementById('hud');
   let actx, t0, scale = Math.min(window.devicePixelRatio || 1, 1.5), lastFrames = [];
+  document.getElementById('rm').hidden = !calm;
+  // a click anywhere on the start screen, or Enter/Space on the focused PLAY button (bubbles as a click)
   document.getElementById('start').addEventListener('click', async () => {
     const st = document.getElementById('start');
     st.querySelector('.go').textContent = 'STARTING…';
@@ -257,11 +270,11 @@ if (RENDER) {
     (function pump() {
       while (next < N && t0 + next * inv < actx.currentTime + 4) { last = play(make(next), next); next += CHUNK; }
       if (next < N) setTimeout(pump, 250);
-      else last.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
+      else last.onended = () => { const r = document.getElementById('replay'); r.hidden = false; r.focus(); r.addEventListener('click', () => location.reload()); };
     })();
     st.remove();
     requestAnimationFrame(loop);
-  });
+  }, { once: true });
   function loop(now) {
     const t = Math.min(Synth.DUR, Math.max(0, actx.currentTime - t0));
     // adaptive resolution: keep it smooth on weak GPUs
@@ -271,7 +284,9 @@ if (RENDER) {
       if (fps < 40 && scale > 0.4) { scale *= 0.85; lastFrames = []; }
       else if (fps > 58 && scale < Math.min(window.devicePixelRatio || 1, 1.5)) { scale *= 1.05; lastFrames = []; }
     }
-    draw(t, Math.floor(innerWidth * scale), Math.floor(innerHeight * scale));
+    // mid-section time: no cut flash, constant kick uniform, static grain
+    const tv = calm ? Math.floor(t / 15) * 15 + 7.5 : t;
+    draw(t, Math.floor(innerWidth * scale), Math.floor(innerHeight * scale), tv);
     hud.textContent = t.toFixed(1) + ' s';
     if (t < Synth.DUR) requestAnimationFrame(loop);
   }
