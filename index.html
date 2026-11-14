@@ -42,6 +42,8 @@ vec3 pal(float t, vec3 d){ return .5+.5*cos(6.2832*(t+d)); }
 float sdBox(vec3 p, vec3 b){ vec3 q=abs(p)-b; return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.); }
 
 int S; float sT; // scene index, local time
+// 12 sections of 15 s: each scene gets 30 s, then a 15 s reprise of all four (see README timeline)
+const int SC[12] = int[12](0,0,1,1,2,2,3,3,0,1,2,3);
 
 float tunnel(vec3 p){
   vec3 q = p; q.xy *= rot(floor(q.z/2.)*.35 + T*.2);
@@ -94,12 +96,16 @@ vec3 nrm(vec3 p){
 }
 void main(){
   vec2 uv = (gl_FragCoord.xy - .5*R)/R.y;
-  S = int(clamp(floor(T/15.), 0., 3.)); sT = T - float(S)*15.;
+  int sec = int(clamp(floor(T/15.), 0., 11.));
+  S = SC[sec];
+  float cutT = T - (sec < 8 ? float(sec/2)*30. : float(sec)*15.); // time since this scene started
+  sT = cutT + (sec >= 8 ? 23. : 0.); // reprise: start the camera somewhere new
   vec3 ro, ta; vec3 tint; float fov = 1.6;
   if(S==0){ float z = T*3.5; ro = vec3(sin(T*.4)*.6, cos(T*.3)*.5, z); ta = ro + vec3(sin(T*.5)*.4, cos(T*.37)*.3, 1.); tint = vec3(.2,.9,1.); }
   else if(S==1){ float a = sT*.25; float r = 4.6 - .8*sin(sT*.2); ro = vec3(cos(a)*r, sin(sT*.17)*1.2, sin(a)*r); ta = vec3(0); tint = vec3(1.,.45,.15); fov = 1.9; }
   else if(S==2){ float z = sT*5.; ro = vec3(sin(z*.2)*1.5, cos(z*.15)*1.2, z); ta = vec3(sin((z+2.)*.2)*1.5, cos((z+2.)*.15)*1.2, z+2.); tint = vec3(1.,.15,.7); }
   else { float a = sT*.2 + 1.; float r = 2.6 + .9*cos(sT*.15); ro = vec3(cos(a)*r, .8+.5*sin(sT*.3), sin(a)*r); ta = vec3(0); tint = vec3(.6,.8,1.); fov = 1.8; }
+  if(sec >= 8) tint = tint.zxy; // reprise: new colour per scene
   vec3 ww = normalize(ta-ro), uu = normalize(cross(ww, vec3(0,1,0))), vv = cross(uu, ww);
   vec3 rd = normalize(uv.x*uu + uv.y*vv + fov*ww);
   rd.xy *= rot(S==2 ? sin(sT*.3)*.4 : 0.);
@@ -128,9 +134,9 @@ void main(){
   col += glow*.018*(1. + 1.4*K);
   col = mix(col, tint*.03, 1. - exp(-t*.025));
   // transitions: flash on scene cut, fade at start/end
-  float cut = exp(-sT*5.) * (S>0 ? 1. : 0.);
+  float cut = exp(-cutT*5.) * (T > 1. ? 1. : 0.);
   col += vec3(1.)*cut*.8;
-  col *= smoothstep(0., 2.5, T) * smoothstep(60., 57.5, T) * mix(1., .3, smoothstep(52.5, 54., T));
+  col *= smoothstep(0., 2.5, T) * smoothstep(180., 177.5, T) * mix(1., .3, smoothstep(172.5, 174., T));
   // post
   col = 1. - exp(-col*1.35);
   col = pow(col, vec3(.85));
@@ -159,13 +165,15 @@ const CUES = [
   [2.0, 6.8, ['SIGNAL 135'], 0.13, 'title'],
   [3.2, 6.8, ['a realtime demo'], 0.035, 'sub'],
   [8.0, 13.5, ['one HTML file', 'zero libraries', 'every pixel and every sample', 'computed live from math'], 0.042, 'list'],
-  [16.0, 21.5, ['geometry: distance fields'], 0.045, 'tag'],
-  [22.5, 28.5, ['music: a pure function of time', 'f(t) → sound'], 0.045, 'tag'],
-  [30.05, 37.0, ['135'], 0.34, 'big'],
-  [31.2, 37.0, ['≈ 99th percentile'], 0.04, 'under'],
-  [38.5, 44.0, ['not a ceiling.', 'a starting signal.'], 0.055, 'tag'],
-  [47.0, 53.0, ['code · music · visuals', 'one person'], 0.045, 'tag'],
-  [53.5, 59.5, ['SIGNAL 135', 'John Johansson', 'github.com/jojo-swe/signal-135'], 0.05, 'end'],
+  [31.0, 36.5, ['geometry: distance fields'], 0.045, 'tag'],
+  [46.0, 52.0, ['music: a pure function of time', 'f(t) → sound'], 0.045, 'tag'],
+  [60.05, 67.0, ['135'], 0.34, 'big'],
+  [61.2, 67.0, ['≈ 99th percentile'], 0.04, 'under'],
+  [76.0, 82.0, ['not a ceiling.', 'a starting signal.'], 0.055, 'tag'],
+  [92.0, 98.0, ['no samples · no textures', 'no frameworks'], 0.045, 'tag'],
+  [106.0, 112.0, ['code · music · visuals', 'one person'], 0.045, 'tag'],
+  [135.0, 138.5, ['135'], 0.34, 'big'],
+  [173.5, 179.5, ['SIGNAL 135', 'John Johansson', 'github.com/jojo-swe/signal-135'], 0.05, 'end'],
 ];
 function typed(str, t0, t, cps) { const n = Math.max(0, Math.floor((t - t0) * cps)); return str.slice(0, n); }
 function drawText(ctx, w, h, t) {
@@ -231,16 +239,27 @@ if (RENDER) {
   let actx, t0, scale = Math.min(window.devicePixelRatio || 1, 1.5), lastFrames = [];
   document.getElementById('start').addEventListener('click', async () => {
     const st = document.getElementById('start');
-    st.querySelector('.go').textContent = 'COMPUTING 60 s OF AUDIO…';
-    await new Promise(r => setTimeout(r, 30));
+    st.querySelector('.go').textContent = 'STARTING…';
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    const N = Math.floor(Synth.DUR * actx.sampleRate), buf = actx.createBuffer(2, N, actx.sampleRate);
-    const L = buf.getChannelData(0), Rr = buf.getChannelData(1), inv = 1 / actx.sampleRate;
-    for (let i = 0; i < N; i++) { const s = Synth.sample(i * inv); L[i] = s[0]; Rr[i] = s[1]; }
-    const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+    await new Promise(r => setTimeout(r, 30));
+    // stream the audio: synthesize 2 s chunks a few seconds ahead of the playhead and schedule them
+    // back to back (sample-exact), so 3 minutes start instantly instead of after a long precompute
+    const sr = actx.sampleRate, inv = 1 / sr, CHUNK = sr * 2, N = Math.floor(Synth.DUR * sr);
+    const make = (i0) => {
+      const n = Math.min(CHUNK, N - i0), b = actx.createBuffer(2, n, sr), L = b.getChannelData(0), Rr = b.getChannelData(1);
+      for (let i = 0; i < n; i++) { const s = Synth.sample((i0 + i) * inv); L[i] = s[0]; Rr[i] = s[1]; }
+      return b;
+    };
+    const play = (b, i0) => { const s = actx.createBufferSource(); s.buffer = b; s.connect(actx.destination); s.start(t0 + i0 * inv); return s; };
+    let next = CHUNK, last;
+    const first = make(0);
+    t0 = actx.currentTime + 0.1; last = play(first, 0);
+    (function pump() {
+      while (next < N && t0 + next * inv < actx.currentTime + 4) { last = play(make(next), next); next += CHUNK; }
+      if (next < N) setTimeout(pump, 250);
+      else last.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
+    })();
     st.remove();
-    t0 = actx.currentTime + 0.05; src.start(t0);
-    src.onended = () => { hud.textContent = 'click to replay'; document.body.addEventListener('click', () => location.reload(), { once: true }); };
     requestAnimationFrame(loop);
   });
   function loop(now) {

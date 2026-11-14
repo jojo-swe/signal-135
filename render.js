@@ -22,7 +22,9 @@ function writeWav(file) {
 
 (async () => {
   const wav = OUT.replace(/\.mp4$/, '.wav');
-  if (!fs.existsSync(wav)) { console.time('wav'); writeWav(wav); console.timeEnd('wav'); }
+  // the WAV is cached across segment renders, but must be rebuilt whenever the synth changed
+  const stale = !fs.existsSync(wav) || fs.statSync(wav).mtimeMs < fs.statSync(require.resolve('./synth.js')).mtimeMs;
+  if (stale) { console.time('wav'); writeWav(wav); console.timeEnd('wav'); }
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 640, height: 360 } });
   p.on('pageerror', e => { console.error('PAGE', e.message); process.exit(1); });
