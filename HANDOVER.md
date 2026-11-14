@@ -9,7 +9,8 @@
 Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, one synth file, zero libraries.
 
 - Huvudbranch: `main`
-- `main` innehåller gyroid-fixen (#4) och 3-minuters-/industrial-versionen (#5), mergade 2026-11-14.
+- `main` innehåller gyroid-fixen (#4), 3-minuters-/industrial-versionen (#5), HANDOVER-not (#6) och a11y-fixen (#7: PLAY/REPLAY som knappar, `prefers-reduced-motion` = stillbild per sektion), alla mergade 2026-11-14.
+- Projektet är pausat 2026-11-14 på användarens begäran.
 - Öppna PR:er: inga. Andra brancher på remote: inga.
 - CI (`privacy-guard`) grönt.
 - Demot verifierat i webbläsaren 2026-11-14: alla 12 sektioner via `?render`, inga konsolfel, ~1,5–2,5 ms/bildruta i 720p, strömmande ljud startar <1 s.
@@ -25,7 +26,7 @@ Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, on
 
 Önskemål från användaren (2026-11-14):
 
-- **Gå live på johnjohansson.com:** demot ligger på sajt-repots `main` (`/signal-135/`, jojo-swe/johnjohansson-com#2 och #3). Kvar: nattens Build där, sedan `release.yml`-dispatch (Johns godkännande), så installerar VPS:en. Ändras demot här måste `index.html` och `synth.js` kopieras till `public/signal-135/` igen.
+- **Gå live på johnjohansson.com:** demot ligger på sajt-repots `main` (`/signal-135/`, jojo-swe/johnjohansson-com#2 och #3). John låter en Grok-bot köra Build + `release.yml` i sajt-repot (prompt given 2026-11-14); VPS:en installerar sedan inom ~15 min. Kontrollera att https://johnjohansson.com/signal-135/ svarar 200 och att `/build.txt` visar den nya `site-r`-taggen. Ändras demot här måste `index.html` och `synth.js` kopieras till `public/signal-135/` igen.
 
 Övriga förslag:
 
@@ -42,6 +43,8 @@ Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, on
 
 ## Senaste commits
 
+- 2026-11-14 Merge PR #7: PLAY/REPLAY som knappar, reducerad rörelse
+- 2026-11-14 Merge PR #6: HANDOVER pekar på webbplats-PR:en
 - 2026-11-14 Merge PR #5: 3 minuter, industrial techno, strömmande ljud, `npm test`, render-cachefix
 - 2026-11-14 Merge PR #4: gyroid-scenen skarp
 - 2026-11-14 `c3baf39` Merge PR #3 (HANDOVER-städning)
@@ -53,6 +56,7 @@ Projekt: A 3-minute realtime demo with dark industrial techno. One HTML page, on
 |-------|-------|-----------------|
 | 2026-11-04 | Claude (Cowork) | Lade till AGENTS.md, HANDOVER.md och CLAUDE.md; inventerade PR:er, brancher och commits. |
 | 2026-11-14 | Claude Code | Statusgenomgång; raderade inaktuell remote-branch `cursor/privacy-guard-dbfd` (med användarens OK); uppdaterade HANDOVER.md (PR #3). |
+| 2026-11-14 | Claude Code | Mergade #6, raderade mergade brancher (bara `main` kvar), gav John en deploy-prompt för Grok-bot. Paus. |
 | 2026-11-14 | Claude Code | PLAY/REPLAY som knappar och prefers-reduced-motion (stillbild per sektion), #7. Kopierat till sajten. |
 | 2026-11-14 | Claude Code | Öppnade jojo-swe/johnjohansson-com#2 som publicerar demot på `/signal-135/`. |
 | 2026-11-14 | Claude Code | Rättade render.js WAV-cache (Devin Review). Mergade #4 och #5 på användarens begäran. |
