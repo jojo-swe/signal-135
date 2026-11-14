@@ -6,11 +6,11 @@
 
 *Senast inventerat 2026-11-14 av Claude Code.*
 
-Projekt: A 60-second realtime demo. One HTML page, one synth file, zero libraries.
+Projekt: A 3-minute realtime demo (60 s på `main` tills PR för 3-minutersversionen är mergad). One HTML page, one synth file, zero libraries.
 
 - Huvudbranch: `main`
 - Senaste commit på `main`: 2026-11-14 `c3baf39` Merge pull request #3 (HANDOVER-städning)
-- Öppna PR:er: gyroid-fixen (`agent/claude/sharpen-gyroid`)
+- Öppna PR:er: #4 gyroid-fixen (`agent/claude/sharpen-gyroid`), 3-minutersversionen (`agent/claude/three-minutes`, bygger på #4)
 - CI (`privacy-guard`) grönt.
 - Demot kört och verifierat i webbläsaren 2026-11-14 (alla fyra scener, inga konsolfel, ~1,5–2,5 ms/bildruta i 720p).
 - Lokal körning: `python -m http.server 8135` och öppna `http://127.0.0.1:8135`. Exakta bildrutor: `?render` + `window.renderFrame(t, w, h)` i konsolen.
@@ -19,14 +19,14 @@ Projekt: A 60-second realtime demo. One HTML page, one synth file, zero librarie
 
 | Agent/vem | Branch | Status | Beskrivning |
 |-----------|--------|--------|-------------|
-| Claude Code | `agent/claude/sharpen-gyroid` | PR öppen | Fixar urblekt/dimmig gyroid-scen (30–45 s) |
+| Claude Code | `agent/claude/sharpen-gyroid` | PR #4 öppen | Fixar urblekt/dimmig gyroid-scen |
+| Claude Code | `agent/claude/three-minutes` | PR öppen (bas: #4) | Förlänger demot till 3 min: ny arrangering, B-del F–G–Em–Am, 12 sektioner à 15 s, repris i nya färger, `npm test` |
 
 ## Nästa steg
 
-Önskemål från användaren (2026-11-14), inte påbörjade:
+Önskemål från användaren (2026-11-14):
 
-- **Göra demot betydligt längre.** Längd och upplägg ej bestämt. Berör `synth.js` (`DUR`, arrangemang), scenindelningen i shadern (`floor(T/15.)`, fyra scener à 15 s), text-`CUES` och fade-tiderna (57,5/60 s) i `index.html`.
-- **Publicera demot på johnjohansson.com.** Hur sajten hostas är inte undersökt ännu.
+- **Publicera demot på johnjohansson.com** när 3-minutersversionen är mergad. Hur sajten hostas är inte undersökt ännu.
 
 Övriga förslag:
 
@@ -35,7 +35,8 @@ Projekt: A 60-second realtime demo. One HTML page, one synth file, zero librarie
 
 ## Kända problem
 
-- `npm test` är npm:s platshållare och felar alltid; inga tester finns.
+- Ljudet beräknas i förväg vid PLAY: ~5,5 s för 3 min på desktop (procentvisning finns), längre på mobil.
+- Realtidsuppspelningen av 3-minutersversionen är bara kontrollerad bildruta för bildruta (`?render`), inte tittad på i sin helhet med ljud.
 - Ljudet ej avlyssnat/verifierat av agent (kan inte höra).
 - `render.js` (offline-MP4) ej körd sedan 2026-10-28.
 
@@ -53,4 +54,5 @@ Projekt: A 60-second realtime demo. One HTML page, one synth file, zero librarie
 |-------|-------|-----------------|
 | 2026-11-04 | Claude (Cowork) | Lade till AGENTS.md, HANDOVER.md och CLAUDE.md; inventerade PR:er, brancher och commits. |
 | 2026-11-14 | Claude Code | Statusgenomgång; raderade inaktuell remote-branch `cursor/privacy-guard-dbfd` (med användarens OK); uppdaterade HANDOVER.md (PR #3). |
+| 2026-11-14 | Claude Code | Förlängde demot till 3 minuter (PR på `agent/claude/three-minutes`); lade till `synth.test.js` som `npm test`; procentvisning vid ljudberäkning. |
 | 2026-11-14 | Claude Code | Körde demot i webbläsaren. Fixade gyroid-scenen: tunnelurgröpningen hade fel tecken (gyroiden fanns bara i kamerans rör) + dämpad distans mot randiga artefakter. |
