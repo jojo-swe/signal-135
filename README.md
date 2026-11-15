@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/assets/logo.svg" alt="signal-135 logo" width="128"></p>
+
 # SIGNAL 135
 
 A 3-minute realtime demo. One HTML page, one synth file, zero libraries.
